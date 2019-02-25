@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Webshop</title>
+    <link href="https://fonts.googleapis.com/css?family=Raleway:100,200,200i,300,400,900" rel="stylesheet">
+    <link href="main.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+    <div id="container">
+    <div id="blokk1">
+        <br>
+        <img src="sale.png" alt="sale" id="sale" /><br><br>
+        <!--<div class="doboz">
+            <label for="termekId">termék id</label><br>
+            <label for="megnevezes">megnevezés</label><br>
+            <label for="ar">ár</label><br>
+            <label for="foto">fotó</label><br><br>
+        </div>-->
+        <input class="doboz" id="termekId" type="number" placeholder='termék ID'><br>
+        <input class="doboz" id="megnevezes" type="text" placeholder='név'><br>
+        <input class="doboz" id="ar" type="number" placeholder='ár'><br>
+        <input class="doboz" id="foto" type="text" placeholder='fotó URL'><br>
+        <br><br>
+        <button id='upload' type='button' value='feltoltes'>feltöltés</button>
+        <br>
+        <br>
+        <br>
+        <div id="json"></div>
+    </div>
+
+    <div id="blokk2">
+        <input class="searchField" type="text" id="myInputMegnevezes" onkeyup="myFilterMegnevezes()" placeholder="Megnevezés keresése.."><br><br>
+        <input class="searchField" type="number" id="myInputAr" onkeyup="myFilterAr()" placeholder="Ár keresése.."><br><br>
+        <img src="list.png" alt='list' id='listIcon'><br>
+        <table id='termeklista'>
+            <thead>
+                <tr>
+                    <th id="termekSort">#</th>
+                    <th id="megnevezesSort">név</th>
+                    <th id="arSort">ár</th>
+                    <th id="foto">fotó</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tfoot></tfoot>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    <div id="blokk3">
+        <img src="cart.png" alt='cart' id='kosarIcon'><br>
+        <table id='kosar'>
+            <thead>
+                <tr>
+                    <th>név</th>
+                    <th>ár</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tfoot></tfoot>
+            <tbody></tbody>
+        </table><br>
+        <div id="sum"></div><br><br>
+        <button id='emptyBasket' type='button' value='kosarUritese'>kosár ürítése</button>
+    </div>
+    </div>
+
+
+
+    <script type='text/javascript'>
+        'use strict';
+        window.addEventListener('load', Window_Load_Handler, false);
+
+        function Window_Load_Handler() {
+            console.log('Kész a DOM fa');
+
+            document.getElementById('upload').addEventListener('click', addToList, false);
+            document.getElementById('emptyBasket').addEventListener('click', emptyBasket, false);
+            document.getElementById('termekSort').addEventListener('click', termekIDsorrendezes, false);
+            document.getElementById('megnevezesSort').addEventListener('click', megnevezesSorrendezes, false);
+            document.getElementById('arSort').addEventListener('click', arSorrendezes, false);
+            
+        };
+
+        var Termeklista = [];
+        var termek = [];
+        var Basket = [];
+        var nodeFotoUrlTextBox;
+
+
+        function Termek(termekId, megnevezes, ar, foto) {
+            this.termekId = termekId;
+            this.megnevezes = megnevezes;
+            this.ar = ar;
+            this.foto = foto;
+        };
+
+
+        //TERMÉKLISTA TÁBLÁZAT MEGRAJZOLÁSA
+        function drawList()
+        {
+            var nodeTbody = document.querySelector('#termeklista tbody');
+
+            nodeTbody.innerText = "";
+            for (var i = 0; i < Termeklista.length; i++) {
+                var nodeTR = document.createElement('tr');
+                var nodeTD1 = document.createElement('td');
+                var nodeTD2 = document.createElement('td');
+                var nodeTD3 = document.createElement('td');
+                var nodeTD4 = document.createElement('td');
+                var nodeTD5 = document.createElement('td');
+                /*var toBasket = document.createElement('input');
+                toBasket.setAttribute('type', 'button');
+                toBasket.setAttribute('value', 'Kosárba');*/
+                var toBasket = document.createElement('img');
+                toBasket.setAttribute('src', 'cart.png');
+                toBasket.setAttribute('width', '40px');
+
+                var oImg = document.createElement("img");
+                oImg.setAttribute('src', Termeklista[i].foto);
+                oImg.setAttribute('id', 'feltoltottFoto');
+
+                nodeTD1.innerText = Termeklista[i].termekId;
+                nodeTD2.innerText = Termeklista[i].megnevezes;
+                nodeTD3.innerText = Termeklista[i].ar;
+
+                nodeTbody.appendChild(nodeTR);
+                nodeTR.appendChild(nodeTD1);
+                nodeTR.appendChild(nodeTD2);
+                nodeTR.appendChild(nodeTD3);
+                nodeTR.appendChild(nodeTD4);
+                nodeTR.appendChild(nodeTD5);
+                nodeTD5.appendChild(toBasket);
+                nodeTD4.appendChild(oImg);
+
+                toBasket.addEventListener("click", addToBasket, false);
+            }
+            document.getElementById('json').innerHTML=JSON.stringify(Termeklista, null, 4);
+        };
+
+        //TERMÉKLISTÁHOZ ADÁS
+        function addToList() {
+            termek = new Termek(document.getElementById("termekId").value, document.getElementById("megnevezes").value, document.getElementById("ar").value, document.querySelector('#foto').value);
+            Termeklista.push(termek);
+
+            //console.log(Termeklista);
+
+            drawList();
+            document.getElementById("termekId").value="";
+            document.getElementById("megnevezes").value="";
+            document.getElementById("ar").value="";
+            document.querySelector('#foto').value="";
+        };
+
+
+        //KOSÁR TÁBLÁZAT MEGRAJZOLÁSA
+        function drawBasket() {
+            var kosarTbody = document.querySelector('#kosar tbody');
+
+            kosarTbody.innerText = "";
+            for (var i = 0; i < Basket.length; i++) {
+                var kosarTR = document.createElement('tr');
+                var kosarTD1 = document.createElement('td');
+                var kosarTD2 = document.createElement('td');
+                var kosarTD3 = document.createElement('td');
+                /*var DELitem = document.createElement('input');
+                DELitem.setAttribute('type', 'button');
+                DELitem.setAttribute('value', 'Törlés');*/
+                var DELitem = document.createElement('img');
+                DELitem.setAttribute('src', 'delete.png');
+                DELitem.setAttribute('width', '20px');
+                DELitem.setAttribute('data-termekid', Basket[i].termekId);
+
+                kosarTbody.appendChild(kosarTR);
+                kosarTR.appendChild(kosarTD1);
+                kosarTR.appendChild(kosarTD2);
+                kosarTR.appendChild(kosarTD3);
+                kosarTD3.appendChild(DELitem);
+
+                kosarTD1.innerText = Basket[i].megnevezes;
+                kosarTD2.innerText = Basket[i].ar;
+
+                DELitem.addEventListener("click", delFromBasket, false);
+            }
+            vegosszegKiszamitas();
+        };
+
+        //KOSÁRHOZ ADÁS
+        function addToBasket() {
+            console.log(event.target.parentElement.parentElement.children[0].innerText);
+            var termekId = event.target.parentElement.parentElement.children[0].innerText;
+
+            Basket.push(getTermekByID(termekId));
+
+            console.log(Basket);
+            drawBasket();
+        };
+
+        function getTermekByID(keresettID) {
+            var megtalaltTermek;
+            for (var i = 0; i < Termeklista.length; i++) {
+                if (Termeklista[i].termekId == keresettID) {
+                    megtalaltTermek = Termeklista[i];
+                    break;
+                }
+            }
+            return megtalaltTermek;
+        };
+
+        //TÖRLÉS KOSÁRBÓL
+        function delFromBasket() {
+            var DELitem = event.target;
+            var termekid = DELitem.getAttribute('data-termekid');
+
+            for (var i = 0; i < Basket.length; i++) {
+                if (Basket[i].termekId == termekid) {
+                    Basket.splice(i, 1);
+                    break;
+                }
+            }
+            drawBasket();
+        };
+
+        //KOSÁR ÜRÍTÉS
+        function emptyBasket() {
+            Basket = [];
+            drawBasket();
+        };
+
+        //VÉGÖSSZEG
+        function vegosszegKiszamitas() {
+            var osszeg = 0;
+            for (var i = 0; i < Basket.length; i++) {
+                osszeg += parseInt(Basket[i].ar);
+            };
+            document.getElementById('sum').innerHTML = "<b>végösszeg: </b>" + osszeg + " HUF";
+        };
+
+
+        //SORRENDEZÉS:
+        function termekIDsorrendezes() {
+            var temp=[];
+
+            if (parseInt(Termeklista[0].termekId)>parseInt(Termeklista[Termeklista.length - 1].termekId))
+            {
+                    for(var i=0; i<Termeklista.length; i++)    
+                    {
+                        for(var j=0; j<Termeklista.length; j++)
+                        {
+                            if (parseInt(Termeklista[i].termekId)<parseInt(Termeklista[j].termekId))
+                            {
+                                temp.push(Termeklista[i], Termeklista[j]);
+                                Termeklista[i]=temp[1];
+                                Termeklista[j]=temp[0];
+                                temp=[];
+                            }
+                        }
+                    }
+                console.warn(Termeklista);
+                drawList();
+            } else {
+                for(var i=0; i<Termeklista.length; i++)    
+                {
+                    for(var j=0; j<Termeklista.length; j++)
+                    {
+                        if (parseInt(Termeklista[i].termekId)>parseInt(Termeklista[j].termekId))
+                        {
+                            temp.push(Termeklista[i], Termeklista[j]);
+                            Termeklista[i]=temp[1];
+                            Termeklista[j]=temp[0];
+                            temp=[];
+                        }
+                    }
+                }
+            console.warn(Termeklista);
+            drawList();
+            }
+        };
+
+        function megnevezesSorrendezes()
+        {
+            var temp=[];
+            if (Termeklista[0].megnevezes>Termeklista[Termeklista.length - 1].megnevezes)
+            {
+                for(var i=0; i<Termeklista.length; i++)    
+                    {
+                        for(var j=0; j<Termeklista.length; j++)
+                        {
+                            if (Termeklista[i].megnevezes<Termeklista[j].megnevezes)
+                            {
+                                temp.push(Termeklista[i], Termeklista[j]);
+                                Termeklista[i]=temp[1];
+                                Termeklista[j]=temp[0];
+                                temp=[];
+                            }
+                        }
+                    }
+            console.warn(Termeklista);
+            drawList();
+            } else {
+                for(var i=0; i<Termeklista.length; i++)    
+                    {
+                        for(var j=0; j<Termeklista.length; j++)
+                        {
+                            if (Termeklista[i].megnevezes>Termeklista[j].megnevezes)
+                            {
+                                temp.push(Termeklista[i], Termeklista[j]);
+                                Termeklista[i]=temp[1];
+                                Termeklista[j]=temp[0];
+                                temp=[];
+                            }
+                        }
+                    }
+                console.warn(Termeklista);
+                drawList();
+            }
+        };
+
+        function arSorrendezes() {
+            var temp=[];
+            if (parseInt(Termeklista[0].ar)>parseInt(Termeklista[Termeklista.length - 1].ar))
+            {
+                for(var i=0; i<Termeklista.length; i++)    
+                    {
+                        for(var j=0; j<Termeklista.length; j++)
+                        {
+                            if (parseInt(Termeklista[i].ar)<parseInt(Termeklista[j].ar))
+                            {
+                                temp.push(Termeklista[i], Termeklista[j]);
+                                Termeklista[i]=temp[1];
+                                Termeklista[j]=temp[0];
+                                temp=[];
+                            }
+                        }
+                    }
+                console.warn(Termeklista);
+                drawList();
+            } else {
+                for(var i=0; i<Termeklista.length; i++)    
+                    {
+                        for(var j=0; j<Termeklista.length; j++)
+                        {
+                            if (parseInt(Termeklista[i].ar)>parseInt(Termeklista[j].ar))
+                            {
+                                temp.push(Termeklista[i], Termeklista[j]);
+                                Termeklista[i]=temp[1];
+                                Termeklista[j]=temp[0];
+                                temp=[];
+                            }
+                        }
+                    }
+                console.warn(Termeklista);
+                drawList();
+            }
+        };
+
+
+        //SZŰRÉS:
+        function myFilterMegnevezes() {
+            var td;
+            var txtValue;
+            var input = document.getElementById("myInputMegnevezes");
+            var filter = input.value.toLowerCase();
+            var table = document.getElementById("termeklista");
+            var tr = table.getElementsByTagName("tr");
+
+            for (var i = 0; i < tr.length; i++) {
+                td = tr[i].getElementsByTagName("td")[1];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        };
+
+        function myFilterAr() {
+            var input, filter, table, tr, td, txtValue;
+            input = document.getElementById("myInputAr");
+            filter = input.value.toLowerCase();
+            table = document.getElementById("termeklista");
+            tr = table.getElementsByTagName("tr");
+
+            for (var i = 0; i < tr.length; i++) {
+                td = tr[i].getElementsByTagName("td")[2];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        };
+
+    </script>
+</body>
+
+</html>
